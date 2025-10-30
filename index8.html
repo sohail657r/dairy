@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AL-NOOR DAIRY | Milk Supply Management</title>
+  <style>
+    :root{
+      --bg: #f3f6f9;
+      --card: #ffffff;
+      --primary: #2b6cb0;
+      --primary-dark: #214f86;
+      --accent: #38a169;
+      --danger: #e53e3e;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --radius: 6px;
+      --gap: 10px;
+    }
+    *{box-sizing:border-box}
+    body {
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      margin: 28px;
+      background: var(--bg);
+      color: #111827;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    h1{ text-align:center; color:var(--primary); font-weight:600; margin-bottom:18px; line-height:1.1; }
+    .client{ background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin: 14px 0; }
+    .client-header{ display:flex; justify-content:space-between; align-items:center; gap: 12px; cursor:pointer; }
+    .client-header h2{ margin:0; color:var(--primary); font-size:1.05rem; font-weight:600; }
+    .toggle-btn{ border:1px solid var(--border); background: transparent; padding:6px 8px; border-radius:4px; color:var(--primary); font-size:18px; line-height:1; cursor:pointer; }
+    .toggle-btn:hover{ background: #eef6ff; color:var(--primary-dark); }
+    .client-actions{ display:flex; gap:8px; margin-top:10px; justify-content:flex-end; }
+    .client-actions button{ border:1px solid var(--border); background:var(--primary); color:white; padding:7px 10px; border-radius:4px; cursor:pointer; font-weight:600; }
+    .client-actions button:hover{ background:var(--primary-dark); }
+    input[type="text"], input[type="number"], input[type="date"]{ border:1px solid var(--border); background:transparent; padding:8px; border-radius:6px; outline:none; min-width:120px; }
+    input.inline-input{ padding:6px; border-radius:4px; border:1px solid var(--border); }
+    button{ cursor:pointer; border-radius:6px; border:0; padding:8px 12px; }
+    .small-btn{ padding:6px 10px; border-radius:5px; border:0; }
+    .btn-save{ background:var(--primary); color:white; }
+    .btn-cancel{ background:var(--danger); color:white; }
+    .btn-yes{ background:var(--danger); color:white; }
+    table{ width:100%; border-collapse:collapse; margin-top:10px; font-size:0.95rem; }
+    thead th{ text-align:center; padding:8px; border-bottom:1px solid var(--border); background:transparent; color:var(--muted); font-weight:600; }
+    tbody td{ padding:8px; border-bottom:1px solid #f1f5f9; text-align:center; }
+    tfoot td{ padding:8px; text-align:center; border-top:1px solid var(--border); }
+    .total{ font-weight:700; color:var(--accent); }
+    .fold-content{ display:none; margin-top:10px; }
+    .pdf-buttons{ display:flex; gap:8px; margin-bottom:10px; }
+    .pdf-buttons button{ background:var(--primary); color:white; border:1px solid var(--primary); padding:8px 10px; border-radius:6px; font-weight:600; }
+    .pdf-buttons button:hover{ background:var(--primary-dark); border-color:var(--primary-dark); }
+    .summary{ margin-top:12px; background:transparent; padding:8px 0 0 0; border-radius:6px; color:var(--muted); font-size:0.95rem; }
+    .add-client-form{ display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:10px; flex-wrap:wrap; }
+    .add-client-form input{ margin:0 4px; }
+    .total-report-btn{ display:block; margin:14px auto; background:var(--accent); color:white; border:1px solid var(--accent); padding:10px 18px; border-radius:6px; font-weight:700; }
+    .total-report-btn:hover{ background:#2f855a; border-color:#2f855a; }
+    #report-section{ display:none; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-top:20px; text-align:center; }
+    #report-section h3{ margin:0 0 8px 0; color:var(--primary); }
+    .edit-row td, .delete-row td, .client-edit-row, .client-delete-row{ background: #fff; border-top:1px solid #f1f5f9; }
+    .muted{ color:var(--muted); font-size:0.95rem; }
+    @media (max-width:600px){
+      .add-client-form{ flex-direction:column; gap:6px; }
+      .pdf-buttons{ flex-direction:column; }
+      .client-actions{ justify-content:center; }
+      table, thead, tbody, tfoot, tr, td, th { font-size:0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <h1>AL-NOOR DAIRY<br>Milk Supply Management System</h1>
+  <div class="add-client-form">
+    <h3 style="margin:0 8px 0 0;color:var(--primary);font-weight:700;">Add New Client</h3>
+    <input type="text" id="client-name" placeholder="Client Name" />
+    <input type="number" id="client-price" placeholder="Default Price (Rs.)" />
+    <button class="btn-save" onclick="addClient()">Add Client</button>
+  </div>
+  <button class="total-report-btn" onclick="showTotalReport()">Show Overall Total Report</button>
+  <div id="clients-container"></div>
+  <div id="report-section">
+    <h3>AL-NOOR DAIRY – Overall Report</h3>
+    <div id="report-body" style="color:var(--muted);"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    let clients = JSON.parse(localStorage.getItem("clients")) || [];
+    function saveClients(){ localStorage.setItem("clients", JSON.stringify(clients)); }
+    function escapeId(name){ return name.replace(/[^a-z0-9\-_]/gi,'_'); }
+
+    function renderClients(){
+      const container = document.getElementById("clients-container");
+      container.innerHTML = "";
+      clients.forEach(client => {
+        const id = escapeId(client.name);
+        const div = document.createElement("div");
+        div.className = "client";
+        div.innerHTML = `
+          <div class="client-header" onclick="toggleFold('${client.name}')">
+            <h2 id="client-title-${id}">${client.name}</h2>
+            <button class="toggle-btn" id="toggle-${id}">+</button>
+          </div>
+          <div class="fold-content" id="fold-${id}">
+            <div class="pdf-buttons">
+              <button onclick="downloadPDF('${client.name}')">Download PDF</button>
+              <button onclick="sharePDF('${client.name}')">Share PDF</button>
+            </div>
+            <p style="margin:6px 0 10px 0;">Default Price per Liter: <strong>Rs. ${client.defaultPrice}</strong></p>
+            <form onsubmit="addEntry(event, '${client.name}')">
+              <input type="date" id="date-${id}" required />
+              <input type="number" id="qty-${id}" placeholder="Liters" min="0" step="0.1" required />
+              <input type="number" id="price-${id}" placeholder="Price (Rs.)" step="0.1" value="${client.defaultPrice}" />
+              <button type="submit" class="btn-save">Add Entry</button>
+            </form>
+            <div id="pdf-content-${id}">
+              <table id="table-${id}">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Quantity (L)</th>
+                    <th>Price (Rs./L)</th>
+                    <th>Total (Rs.)</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="4" class="total">Monthly Total:</td>
+                    <td id="total-${id}" class="total">0</td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div class="summary" id="summary-${id}"></div>
+            </div>
+            <div class="client-actions" id="client-actions-${id}">
+              <button onclick="showClientEdit('${client.name}')">Edit Client</button>
+              <button onclick="showClientDeleteConfirm('${client.name}')">Delete Client</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+        const today = new Date().toISOString().split('T')[0];
+        const dateEl = document.getElementById(`date-${id}`);
+        if(dateEl) dateEl.value = today;
+        renderTable(client.name);
+        updateSummary(client.name);
+      });
+    }
+
+    function toggleFold(clientName){
+      const id = escapeId(clientName);
+      const content = document.getElementById(`fold-${id}`);
+      const btn = document.getElementById(`toggle-${id}`);
+      if(!content) return;
+      content.style.display = content.style.display === "block" ? "none" : "block";
+      btn.textContent = content.style.display === "block" ? "−" : "+";
+    }
+
+    function addClient(){
+      const name = document.getElementById("client-name").value.trim();
+      const price = parseFloat(document.getElementById("client-price").value);
+      if(!name || isNaN(price)){
+        alert("Please fill both fields.");
+        return;
+      }
+      if(clients.some(c=>c.name===name)){
+        alert("Client already exists!");
+        return;
+      }
+      clients.push({ name, defaultPrice: price, data: [] });
+      saveClients();
+      document.getElementById("client-name").value = "";
+      document.getElementById("client-price").value = "";
+      renderClients();
+    }
+
+    // YEH HAI FIXED addEntry FUNCTION
+    function addEntry(e, clientName){
+      e.preventDefault();
+      const id = escapeId(clientName);
+      const date = document.getElementById(`date-${id}`).value;
+      const qty = parseFloat(document.getElementById(`qty-${id}`).value);
+      const price = parseFloat(document.getElementById(`price-${id}`).value);
+      if(!date || isNaN(qty) || isNaN(price)) return;
+
+      const total = +(qty * price).toFixed(2);
+      const client = clients.find(c=>c.name===clientName);
+      client.data.push({ date, qty, price, total });
+      saveClients();
+
+      // SEND TO GOOGLE SHEET
+      fetch('https://script.google.com/macros/s/AKfycbwB6R6j7-y1sBLJjRs3LzbaKxVzutcxAplTXjaItB77vZGdJ3ovbONdhQAol9dCxhg1LQ/exec', {
+        method: 'POST',
+        body: JSON.stringify({
+          client: clientName,
+          date: date,
+          qty: qty,
+          price: price,
+          total: total
+        }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.result === 'success'){
+          console.log("Saved to Google Sheet!");
+        } else {
+          alert("Local save OK, but Sheet failed. Check internet.");
+        }
+      })
+      .catch(err => {
+        console.error("Network error:", err);
+        alert("No internet? Data saved locally.");
+      });
+
+      renderTable(clientName);
+      updateSummary(clientName);
+      e.target.reset();
+      document.getElementById(`date-${id}`).value = new Date().toISOString().split('T')[0];
+    }
+
+    // Baaki sab functions same hain (edit, delete, pdf, etc.)
+    function renderTable(clientName){
+      const client = clients.find(c=>c.name===clientName);
+      const tbody = document.querySelector(`#table-${escapeId(clientName)} tbody`);
+      if(!tbody) return;
+      tbody.innerHTML = "";
+      client.data.forEach((entry, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.qty.toFixed(1)}</td>
+          <td>${entry.price.toFixed(2)}</td>
+          <td>${entry.total.toFixed(2)}</td>
+          <td>
+            <button onclick="editEntry('${clientName}', ${index})">Edit</button>
+            <button onclick="showDeleteConfirmInline('${clientName}', ${index})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      const total = client.data.reduce((s,e)=>s+e.total,0);
+      const totalEl = document.getElementById(`total-${escapeId(clientName)}`);
+      if(totalEl) totalEl.textContent = total.toFixed(2);
+    }
+
+    function editEntry(clientName, index){
+      const table = document.getElementById(`table-${escapeId(clientName)}`);
+      const tbody = table.querySelector("tbody");
+      const existingEdit = table.querySelector(".edit-row");
+      if(existingEdit) existingEdit.remove();
+      const client = clients.find(c=>c.name===clientName);
+      const entry = client.data[index];
+      const rows = tbody.querySelectorAll("tr");
+      const editRow = document.createElement("tr");
+      editRow.className = "edit-row";
+      editRow.innerHTML = `
+        <td colspan="5">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;">
+            <input class="inline-input" type="date" id="edit-date" value="${entry.date}" />
+            <input class="inline-input" type="number" id="edit-qty" min="0" step="0.1" value="${entry.qty}" />
+            <input class="inline-input" type="number" id="edit-price" min="0" step="0.1" value="${entry.price}" />
+            <button class="small-btn btn-save" onclick="saveEdit('${clientName}', ${index})">Save</button>
+            <button class="small-btn btn-cancel" onclick="cancelEdit('${clientName}')">Cancel</button>
+          </div>
+        </td>
+      `;
+      if(rows[index]) rows[index].after(editRow);
+      else tbody.appendChild(editRow);
+    }
+
+    function saveEdit(clientName, index){
+      const newDate = document.getElementById("edit-date").value;
+      const newQty = parseFloat(document.getElementById("edit-qty").value);
+      const newPrice = parseFloat(document.getElementById("edit-price").value);
+      if(!newDate || isNaN(newQty) || isNaN(newPrice)) return alert("Invalid input!");
+      const client = clients.find(c=>c.name===clientName);
+      client.data[index] = { date: newDate, qty: newQty, price: newPrice, total: +(newQty * newPrice).toFixed(2) };
+      saveClients();
+      renderTable(clientName);
+      updateSummary(clientName);
+      document.querySelector(".edit-row")?.remove();
+    }
+
+    function cancelEdit(clientName){
+      const table = document.getElementById(`table-${escapeId(clientName)}`);
+      table.querySelector(".edit-row")?.remove();
+    }
+
+    function showDeleteConfirmInline(clientName, index){
+      const table = document.getElementById(`table-${escapeId(clientName)}`);
+      const tbody = table.querySelector("tbody");
+      const rows = tbody.querySelectorAll("tr");
+      const confirmRow = document.createElement("tr");
+      confirmRow.className = "delete-row";
+      confirmRow.innerHTML = `
+        <td colspan="5">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;">
+            <span class="muted">Delete this record?</span>
+            <button class="small-btn btn-yes" onclick="deleteEntry('${clientName}', ${index})">Yes</button>
+            <button class="small-btn btn-cancel" onclick="cancelDelete('${clientName}')">Cancel</button>
+          </div>
+        </td>
+      `;
+      if(rows[index]) rows[index].after(confirmRow);
+    }
+
+    function cancelDelete(clientName){
+      document.querySelector(`#table-${escapeId(clientName)} .delete-row`)?.remove();
+    }
+
+    function deleteEntry(clientName, index){
+      const client = clients.find(c=>c.name===clientName);
+      client.data.splice(index,1);
+      saveClients();
+      renderTable(clientName);
+      updateSummary(clientName);
+      document.querySelector(`#table-${escapeId(clientName)} .delete-row`)?.remove();
+    }
+
+    function updateSummary(clientName){
+      const client = clients.find(c=>c.name===clientName);
+      const totalLiters = client.data.reduce((s,e)=>s+e.qty,0);
+      const suppliedDays = new Set(client.data.map(e=>e.date)).size;
+      const missedDays = Math.max(0, 30 - suppliedDays);
+      const el = document.getElementById(`summary-${escapeId(clientName)}`);
+      if(el) el.innerHTML = `
+        <p class="muted"><strong>Total Liters:</strong> ${totalLiters.toFixed(1)} L</p>
+        <p class="muted"><strong>Days Supplied:</strong> ${suppliedDays}</p>
+        <p class="muted"><strong>Days Missed:</strong> ${missedDays}</p>
+      `;
+    }
+
+    function showTotalReport(){
+      if(clients.length === 0) return alert("No clients added yet!");
+      const section = document.getElementById("report-section");
+      if(section.style.display === "block") return section.style.display = "none";
+      let totalLiters=0, totalAmount=0, totalDays=0;
+      clients.forEach(c=>{
+        totalLiters += c.data.reduce((s,e)=>s+e.qty,0);
+        totalAmount += c.data.reduce((s,e)=>s+e.total,0);
+        totalDays += new Set(c.data.map(e=>e.date)).size;
+      });
+      document.getElementById("report-body").innerHTML = `
+        <p class="muted"><strong>Total Clients:</strong> ${clients.length}</p>
+        <p class="muted"><strong>Total Milk:</strong> ${totalLiters.toFixed(1)} L</p>
+        <p class="muted"><strong>Total Payment:</strong> Rs. ${totalAmount.toFixed(2)}</p>
+        <p class="muted"><strong>Total Days:</strong> ${totalDays}</p>
+      `;
+      section.style.display = "block";
+      section.scrollIntoView({behavior:"smooth"});
+    }
+
+    async function downloadPDF(clientName){
+      const id = escapeId(clientName);
+      const element = document.getElementById(`pdf-content-${id}`);
+      const actionCells = element.querySelectorAll("th:last-child, td:last-child");
+      actionCells.forEach(c=>c.style.display="none");
+      const canvas = await html2canvas(element, { scale:2 });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p','mm','a4');
+      pdf.text("AL-NOOR DAIRY", 10, 10);
+      pdf.text(clientName + " - Milk Record", 10, 20);
+      pdf.addImage(imgData, 'PNG', 10, 30, 190, (canvas.height * 190) / canvas.width);
+      pdf.save(`${clientName}_Milk_Record.pdf`);
+      actionCells.forEach(c=>c.style.display="");
+    }
+
+    async function sharePDF(clientName){
+      const id = escapeId(clientName);
+      const element = document.getElementById(`pdf-content-${id}`);
+      const actionCells = element.querySelectorAll("th:last-child, td:last-child");
+      actionCells.forEach(c=>c.style.display="none");
+      const canvas = await html2canvas(element, { scale:2 });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      pdf.text("AL-NOOR DAIRY", 10, 10);
+      pdf.text(clientName + " - Milk Record", 10, 20);
+      pdf.addImage(imgData, 'PNG', 10, 30, 180, 0);
+      const pdfBlob = pdf.output('blob');
+      actionCells.forEach(c=>c.style.display="");
+      if(navigator.share){
+        const file = new File([pdfBlob], `${clientName}_Milk_Record.pdf`, { type: 'application/pdf' });
+        navigator.share({ title: `${clientName} Record`, files: [file] }).catch(()=>{});
+      } else {
+        alert("Sharing not supported. Download instead.");
+      }
+    }
+
+    // Client edit/delete functions
+    function showClientEdit(name){ /* ... same as before ... */ }
+    function saveClientEdit(oldName){ /* ... same ... */ }
+    function cancelClientEdit(name){ /* ... same ... */ }
+    function showClientDeleteConfirm(name){ /* ... same ... */ }
+    function cancelClientDelete(name){ /* ... same ... */ }
+    function deleteClient(name){
+      clients = clients.filter(c => c.name !== name);
+      saveClients();
+      renderClients();
+    }
+
+    renderClients();
+  </script>
+</body>
+</html>
